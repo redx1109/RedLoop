@@ -422,6 +422,8 @@ const Sound = (() => {
         if(!muted&&ac.state==='suspended')ac.resume().catch(()=>{});
         if(!muted&&!bgmPlaying)startBGM();}
       return !muted;},
+    pause(){ if(ac&&ac.state==='running') ac.suspend().catch(()=>{}); },
+    unpause(){ if(ac&&!muted&&ac.state==='suspended') ac.resume().catch(()=>{}); },
     isMuted(){return muted;}
   };
 })();
@@ -606,9 +608,7 @@ function drawTile(t,x,y,s,solvedT,pulse,now){
 
   if(style==='neon'){
     buildPipePath(t.base,half,style);ctx.lineCap='round';ctx.lineJoin='round';
-    ctx.strokeStyle='rgba('+pipe.halo[0]+','+pipe.halo[1]+','+pipe.halo[2]+','+((0.10+solvedT*0.14)*pulse).toFixed(3)+')';
-    ctx.lineWidth=lw*3.6;ctx.stroke();
-    ctx.strokeStyle='rgba('+pipe.glow[0]+','+pipe.glow[1]+','+pipe.glow[2]+','+((0.18+solvedT*0.20)*pulse).toFixed(3)+')';
+    ctx.strokeStyle='rgba('+pipe.glow[0]+','+pipe.glow[1]+','+pipe.glow[2]+','+((0.22+solvedT*0.20)*pulse).toFixed(3)+')';
     ctx.lineWidth=lw*1.85;ctx.stroke();
     const cr=Math.round(pipe.core[0]+(pipe.coreSolved[0]-pipe.core[0])*solvedT);
     const cg=Math.round(pipe.core[1]+(pipe.coreSolved[1]-pipe.core[1])*solvedT);
@@ -737,7 +737,7 @@ function update(dt,now){
     if(Game.timeLeft<=0){Game.timeLeft=0;updateHUD(true);triggerGameOver();return;}
     updateHUD(true);
   }
-  if(!animating&&!Game.solved&&!Game.gameOver&&Game.fadeIn>=1){
+  if(!Game.solved&&!Game.gameOver&&Game.fadeIn>=1){
     if(isSolved(Game.tiles,Game.W,Game.H))onLevelComplete(now);
   }
 }
@@ -745,14 +745,14 @@ function update(dt,now){
 /* ============================================================
    LEVEL FLOW
 ============================================================ */
-function scrambleTiles(tiles, difficultyT){
+function scrambleTiles(tiles, difficultyT, rng=Math.random){
   // At low difficulty, some tiles start already in their target rotation —
   // they act as anchors the player can build from.
   const scrambleRatio = 0.55 + difficultyT * 0.45;
   for(const t of tiles){
     if(t.base===0)continue;
-    if(Math.random() > scrambleRatio) continue; // leave at target rotation
-    t.rot=(Math.random()*4)|0;
+    if(rng() > scrambleRatio) continue; // leave at target rotation
+    t.rot=(rng()*4)|0;
     t.angle=t.rot*90;
     t.vel=0;
   }
@@ -762,10 +762,7 @@ function scrambleTiles(tiles, difficultyT){
     if(t){t.rot=(t.rot+1)%4;t.angle=t.rot*90;}
   }
 }
-function todayKey(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+function todayKey(){ return new Date().toISOString().slice(0,10); }
 
 function newLevel(fromTransition){
   const cfg = difficultyForLevel(Game.level, Game.mode);
@@ -773,10 +770,7 @@ function newLevel(fromTransition){
   Game.H = cfg.grid;
 
   let rng = Math.random;
-  if(Game.mode === 'daily'){
-    const d = new Date();
-    rng = mulberry32(d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate());
-  }
+  if(Game.mode === 'daily') rng = mulberry32(+todayKey().replace(/-/g,''));
 
   // Generate several candidates, pick the one closest to the target difficulty band.
   // Target score grows with t so the ramp is measurable, not just parameter-based.
@@ -801,7 +795,7 @@ function newLevel(fromTransition){
   Game.difficulty = bestScore;
 
   // Partial scramble: fewer scrambled tiles at low difficulty
-  scrambleTiles(Game.tiles, cfg.t);
+  scrambleTiles(Game.tiles, cfg.t, rng);
 
   Game.moves = 0;
   Game.solved = false;
@@ -863,6 +857,7 @@ function onLevelComplete(now){
     showToast('∞','LOOP CLOSED');
     clearTimeout(Game.winTimer);
     Game.winTimer=setTimeout(()=>{Game.level++;newLevel(true);},1500);
+    lsSet('il.classic.level',String(Game.level+1)); 
   }
 }
 function triggerGameOver(){
@@ -899,7 +894,7 @@ function showScreen(name){
   elGame.classList.toggle('active',name==='game');
 }
 function startGame(mode){
-  Game.mode=mode;Game.level=1;Game.moves=0;Game.score=0;Game.timeLeft=60;Game.gameOver=false;
+  Game.mode=mode;Game.level=(mode==='classic'?Math.max(1,+lsGet('il.classic.level','1')||1):1);Game.moves=0;Game.score=0;Game.timeLeft=60;Game.gameOver=false;
   showScreen('game');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{layout();newLevel(false);}));
   setTimeout(()=>{if(Game.screen==='game')layout();},420);
@@ -969,11 +964,12 @@ function updateHUD(onlyTimer){
     const d=new Date();
     const months=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     elStatAL.textContent='DATE';elStatBL.textContent='MOVES';
-    elStatA.textContent=months[d.getMonth()]+' '+d.getDate();
+    elStatA.textContent=months[d.getUTCMonth()]+' '+d.getUTCDate();
     if(elStatB.textContent!==String(Game.moves)){elStatB.textContent=Game.moves;popStat(elStatB);}
     elStatB.classList.remove('warn');
   }
 }
+
 function popStat(el){el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 function showToast(big,sub,gold){
   elToastBig.textContent=big;elToastSub.textContent=sub;
@@ -1064,6 +1060,7 @@ elGame.addEventListener('transitionend',(e)=>{
 });
 document.addEventListener('pointerdown',()=>{Sound.init();Sound.unlock();},{once:true});
 document.addEventListener('keydown',()=>{Sound.init();Sound.unlock();},{once:true});
+document.addEventListener('visibilitychange',()=>document.hidden?Sound.pause():Sound.unpause());
 
 buildThemeSwatches();
 applyTheme(lsGet('il.theme','neon'),false);
