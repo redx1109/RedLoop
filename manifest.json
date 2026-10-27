@@ -3,9 +3,9 @@
     "short_name": "RedLoop",
     "start_url":"/",
     "display":"standalone",
-    "background_color":"#000000",
+    "background_color":"#0f0507",
     "orientation":"portrait",
-    "theme_color":"#303030",
+    "theme_color":"#0f0507",
     "icons": [
         {
         "src": "favicon.png",
