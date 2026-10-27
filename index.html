@@ -6,16 +6,19 @@
     <meta name="theme-color" content="#0f0507">
     <title>RedLoop – Free Pipe Loop Puzzle Game | Rotate & Connect</title>
     <meta name="description" content="RedLoop is a free, relaxing loop puzzle game. Rotate tiles to connect every pipe into closed loops. Classic, Time Attack, Zen and Daily modes. Play instantly in your browser.">
-    <meta name="keywords" content="loop puzzle, pipe puzzle, infinity loop game, rotate puzzle, free browser game, RedLoop">
+    <meta name="keywords" content="loop puzzle, pipe puzzle, red loop game, rotate puzzle, free browser game, RedLoop">
     <link rel="canonical" href="https://reddloop.vercel.app/">
     <meta name="robots" content="index,follow,max-image-preview:large">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90' fill='%23e02d44'%3E%E2%88%9E%3C/text%3E%3C/svg%3E">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="RedLoop">
     <meta property="og:title" content="RedLoop – Free Loop Puzzle Game">
     <meta property="og:description" content="Rotate, connect, complete. Four modes, six themes, zero ads.">
     <meta property="og:url" content="https://reddloop.vercel.app/">
     <meta property="og:image" content="https://reddloop.vercel.app/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:title" content="RedLoop – Free Loop Puzzle Game">
+    <meta name="twitter:image" content="https://redloop-psi.vercel.app/og.png">
     <meta name="twitter:card" content="summary_large_image">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"VideoGame","name":"RedLoop","description":"Free loop puzzle game: rotate pipe tiles to form closed loops.","genre":"Puzzle","applicationCategory":"Game","operatingSystem":"Any (browser)","url":"https://reddloop.vercel.app/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
@@ -30,7 +33,7 @@
     <section id="screen-home" class="screen active">
         <div class="hero">
         <div class="hero-inf">∞</div>
-        <h1 class="hero-title">INFINITY <b>LOOP</b></h1>
+        <h1 class="hero-title">RED<b>LOOP</b></h1>
         <p class="hero-tag">ROTATE · CONNECT · COMPLETE</p>
         </div>
         <div class="mode-grid">
@@ -120,11 +123,10 @@
         </div>
     </section>
     </div>
-    <script src="script.js"></script>
-    <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js');
-  }
+    <script src="script.js" defer></script>
+<script>
+if ('serviceWorker' in navigator)
+  addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
