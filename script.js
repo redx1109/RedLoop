@@ -308,7 +308,7 @@ function difficultyForLevel(level, mode){
   let grid;
   if(mode === 'daily') grid = 6;
   else if(mode === 'time') grid = Math.min(7, 4 + Math.floor(level / 5));
-  else grid = Math.min(6, 4 + Math.floor(level / 5));
+  else grid = Math.min(9, 4 + Math.floor(level / 5));
 
   // Difficulty parameters — all ramp with t
   const params = {
