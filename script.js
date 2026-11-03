@@ -280,6 +280,7 @@ function connToTiles(conn,W,H){
 }
 
 function isSolved(tiles,W,H){
+  if(!tiles||tiles.length!==W*H) return false;
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
     const t=tiles[y*W+x]; const m=rotMask(t.base,t.rot); if(m===0) continue;
     for(let d=0;d<4;d++){
@@ -934,6 +935,7 @@ function showScreen(name){
 }
 function startGame(mode){
   Game.mode=mode;Game.level=(mode==='classic'?Math.max(1,+lsGet('il.classic.level','1')||1):1);Game.moves=0;Game.score=0;Game.timeLeft=60;Game.gameOver=false;
+  Game.tiles=[];Game.fadeIn=0;Game.solved=false;
   showScreen('game');
   requestAnimationFrame(()=>requestAnimationFrame(()=>{layout();newLevel(false);}));
   setTimeout(()=>{if(Game.screen==='game')layout();},420);
