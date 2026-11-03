@@ -470,7 +470,7 @@ const particles=[];
 let vw=0,vh=0;
 let lastFrame=performance.now();
 let errLogged=false;
-
+let needsRender=true;
 /* ============================================================
    THEME
 ============================================================ */
@@ -481,6 +481,7 @@ function applyTheme(name,save){
   const root=document.documentElement;
   for(const [k,v] of Object.entries(theme.css))root.style.setProperty(k,v);
   root.setAttribute('data-theme',name);
+  needsRender=true;
   document.querySelectorAll('.theme-swatch').forEach(s=>{
     s.classList.toggle('active',s.dataset.theme===name);
   });
@@ -556,6 +557,7 @@ function layout(retry){
   Game.cell=s;
   Game.ox=(vw-s*Game.W)/2;
   Game.oy=(vh-s*Game.H)/2;
+  needsRender=true;
 }
 
 /* ============================================================
@@ -726,13 +728,14 @@ function update(dt,now){
   for(const t of Game.tiles){
     const target=t.rot*90;const dx=t.angle-target;
     if(Math.abs(dx)<0.02&&Math.abs(t.vel||0)<0.2){t.angle=target;t.vel=0;continue;}
-    if(Game.reduceMotion){t.angle=target;t.vel=0;continue;}
+    if(Game.reduceMotion){t.angle=target;t.vel=0;animating=true;continue;}
     const accel=-omega*omega*dx-2*zeta*omega*(t.vel||0);
     t.vel=(t.vel||0)+accel*dtSafe;
     t.angle+=t.vel*dtSafe;
     animating=true;
   }
   updateParticles(dt);
+  if(animating||particles.length||Game.solved||Game.fadeIn<1)needsRender=true;
   if(Game.mode==='time'&&!Game.gameOver&&!Game.solved){
     Game.timeLeft-=dt;
     if(Game.timeLeft<=0){Game.timeLeft=0;updateHUD(true);triggerGameOver();return;}
@@ -1002,9 +1005,10 @@ canvas.addEventListener('pointerdown',(e)=>{
 canvas.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch')return;
   const rect=canvas.getBoundingClientRect();
-  Game.hover=cellFromPoint(e.clientX-rect.left,e.clientY-rect.top);
+  Game.hover=cellFromPoint(e.clientX-rect.left,e.clientY-rect.top);  
+  needsRender=true;
 });
-canvas.addEventListener('pointerleave',()=>{Game.hover=null;});
+canvas.addEventListener('pointerleave',()=>{Game.hover=null;needsRender=true;});
 
 /* ============================================================
    BUTTONS
@@ -1045,7 +1049,7 @@ function frame(now){
   try{
     const dt=Math.min(0.05,(now-lastFrame)/1000);
     lastFrame=now;
-    if(Game.screen==='game'){update(dt,now);render(now);}
+    if(Game.screen==='game'){update(dt,now);if(needsRender){render(now);needsRender=false;}}
   }catch(err){
     if(!errLogged){errLogged=true;console.error('Loop error:',err);}
   }
