@@ -384,6 +384,7 @@ const Sound = (() => {
   const CHORD_DUR=11,CHORD_STEP=9;
   function bgmTick(){
     if(!bgmPlaying||!ac)return;
+    if(ac.state!=='running'||muted){bgmTimer=setTimeout(bgmTick,2000);return;}
     const now=ac.currentTime;const chord=CHORDS[chordIdx%CHORDS.length];chordIdx++;
     playBass(chord.root,now+0.05,CHORD_DUR);
     for(const f of chord.notes)playPad(f,now+0.05,CHORD_DUR);
