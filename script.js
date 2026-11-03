@@ -124,6 +124,7 @@ function commitLoop(conn,used,edges){
 }
 
 function generateRawBoard(W,H,params,rng){
+  if(params.net) return generateNetworkBoard(W,H,params,rng);
   const conn = Array.from({length:H},()=>new Array(W).fill(0));
   const used = Array.from({length:H},()=>new Array(W).fill(false));
   const cells = [];
@@ -172,6 +173,43 @@ function generateRawBoard(W,H,params,rng){
   }
 
   return {conn, used};
+}
+
+function generateNetworkBoard(W,H,params,rng){
+  const conn=Array.from({length:H},()=>new Array(W).fill(0));
+  const used=Array.from({length:H},()=>new Array(W).fill(false));
+  const seen=Array.from({length:H},()=>new Array(W).fill(false));
+  const deg=m=>(m&1)+((m>>1)&1)+((m>>2)&1)+((m>>3)&1);
+  const link=(x,y,d)=>{const dd=DIRS[d];conn[y][x]|=dd.bit;conn[y+dd.dy][x+dd.dx]|=OPP[dd.bit];};
+  const sx=(rng()*W)|0, sy=(rng()*H)|0;
+  seen[sy][sx]=true;
+  const front=[[sx,sy]];
+  while(front.length){
+    // high branch = bushy (more T-junctions), low = long winding corridors
+    const i=rng()<params.branch?(rng()*front.length)|0:front.length-1;
+    const [x,y]=front[i];
+    const opts=[];
+    if(deg(conn[y][x])<3) for(let d=0;d<4;d++){
+      const nx=x+DIRS[d].dx,ny=y+DIRS[d].dy;
+      if(nx<0||nx>=W||ny<0||ny>=H||seen[ny][nx])continue;
+      opts.push(d);
+    }
+    if(!opts.length){front.splice(i,1);continue;}
+    const d=opts[(rng()*opts.length)|0];
+    link(x,y,d);
+    const nx=x+DIRS[d].dx,ny=y+DIRS[d].dy;
+    seen[ny][nx]=true; front.push([nx,ny]);
+  }
+  // extra links = extra loops + more T-junctions
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)for(let d=1;d<=2;d++){
+    const dd=DIRS[d],nx=x+dd.dx,ny=y+dd.dy;
+    if(nx>=W||ny>=H||(conn[y][x]&dd.bit))continue;
+    if(!conn[y][x]||!conn[ny][nx])continue;
+    if(deg(conn[y][x])>=3||deg(conn[ny][nx])>=3)continue;
+    if(rng()<params.loopChance)link(x,y,d);
+  }
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)used[y][x]=conn[y][x]!==0;
+  return {conn,used};
 }
 
 /* ---- metrics + scoring ---- */
@@ -231,20 +269,12 @@ function scoreDifficulty(m, W, H){
 }
 
 /* ---- conversion ---- */
-function connToTiles(conn, W, H){
-  const tiles = [];
-  for(let y=0;y<H;y++){
-    for(let x=0;x<W;x++){
-      const m = conn[y][x];
-      let base=0, rot=0;
-      if(m===5){base=5;rot=0;}
-      else if(m===10){base=5;rot=1;}
-      else if(m===3){base=3;rot=0;}
-      else if(m===6){base=3;rot=1;}
-      else if(m===12){base=3;rot=2;}
-      else if(m===9){base=3;rot=3;}
-      tiles.push({base,rot,angle:rot*90,vel:0});
-    }
+function connToTiles(conn,W,H){
+  const tiles=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const m=conn[y][x];let base=0,rot=0;
+    if(m){ outer: for(const b of [1,3,5,7]) for(let r=0;r<4;r++) if(rotMask(b,r)===m){base=b;rot=r;break outer;} }
+    tiles.push({base,rot,angle:rot*90,vel:0});
   }
   return tiles;
 }
@@ -277,7 +307,7 @@ function difficultyForLevel(level, mode){
   let grid;
   if(mode === 'daily') grid = 6;
   else if(mode === 'time') grid = Math.min(7, 4 + Math.floor(level / 5));
-  else grid = Math.min(8, 4 + Math.floor(level / 4));
+  else grid = Math.min(6, 4 + Math.floor(level / 5));
 
   // Difficulty parameters — all ramp with t
   const params = {
@@ -291,6 +321,9 @@ function difficultyForLevel(level, mode){
     straightBias: 1 + t * 2,
     // 2×2 filler probability: 0.25 (sparse) → 0.95 (dense)
     fillChance: 0.25 + t * 0.70,
+    net: t > 0.25,
+    branch: 0.35 + t * 0.6,
+    loopChance: 0.05 + t * 0.25,
   };
 
   return { grid, params, t };
@@ -595,6 +628,8 @@ function renderParticles(){
 function buildPipePath(base,half,style){
   ctx.beginPath();
   if(base===5){ ctx.moveTo(0,-half); ctx.lineTo(0,half); }
+  else if(base===1){ ctx.moveTo(0,-half); ctx.lineTo(0,0); }
+  else if(base===7){ ctx.moveTo(0,-half); ctx.lineTo(0,half); ctx.moveTo(0,0); ctx.lineTo(half,0); }
   else if(style==='pixel'){ ctx.moveTo(0,-half); ctx.lineTo(0,0); ctx.lineTo(half,0); }
   else { ctx.moveTo(0,-half); ctx.arc(half,-half,half,Math.PI,Math.PI/2,true); }
 }
@@ -752,7 +787,7 @@ function update(dt,now){
 function scrambleTiles(tiles, difficultyT, rng=Math.random){
   // At low difficulty, some tiles start already in their target rotation —
   // they act as anchors the player can build from.
-  const scrambleRatio = 0.55 + difficultyT * 0.45;
+  const scrambleRatio = difficultyT > 0.25 ? 0.9 + difficultyT * 0.1 : 0.55 + difficultyT * 0.45;
   for(const t of tiles){
     if(t.base===0)continue;
     if(rng() > scrambleRatio) continue; // leave at target rotation
@@ -794,7 +829,7 @@ function newLevel(fromTransition){
       bestScore = score;
     }
   }
-
+  if(cfg.params.net) bestScore = 0.5 + cfg.t * 0.5;
   Game.tiles = connToTiles(best.conn, cfg.grid, cfg.grid);
   Game.difficulty = bestScore;
 
