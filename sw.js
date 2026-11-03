@@ -1,4 +1,4 @@
-const VERSION = 'v2'; // bump on every deploy
+const VERSION = 'v3'; // bump on every deploy
 const CACHE = 'redloop-' + VERSION;
 const ASSETS = [
   '/', '/index.html', '/style.css', '/script.js', '/manifest.json',
