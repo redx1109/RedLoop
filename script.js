@@ -599,7 +599,8 @@ function layout(retry){
 ============================================================ */
 function spawnBurst(cx,cy,count){
   if(Game.reduceMotion)return;
-  const p=Game.theme.pipe.glow||Game.theme.pipe.core||Game.theme.pipe.liquid||[200,220,240];
+  const pp=Game.theme.pipe;
+  const p=pp.glow||pp.core||pp.liquid||pp.ink||pp.wall||[200,220,240];
   for(let i=0;i<count;i++){
     const a=Math.random()*Math.PI*2;const sp=50+Math.random()*160;
     particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0,maxLife:0.5+Math.random()*0.6,r:1.2+Math.random()*2.2,r0:p[0],g0:p[1],b0:p[2]});
@@ -734,7 +735,8 @@ function render(now){
     if(hy>=0&&hy<H&&hx>=0&&hx<W){
       const t=tiles[hy*W+hx];
       if(t&&t.base!==0){
-        const gp=Game.theme.pipe.glow||Game.theme.pipe.core||Game.theme.pipe.liquid;
+        const pp=Game.theme.pipe;
+        const gp=pp.glow||pp.core||pp.liquid||pp.ink||pp.wall||[200,220,240];
         ctx.fillStyle='rgba('+gp[0]+','+gp[1]+','+gp[2]+',0.09)';
         ctx.fillRect(ox+hx*s+3,oy+hy*s+3,s-6,s-6);
       }
